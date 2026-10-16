@@ -1,0 +1,14 @@
+{
+  "name": "opencode-model-manager",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Local GUI to add OpenCode providers and register models directly without a discovery plugin",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  }
+}

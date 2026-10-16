@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local config used by tests / runtime
+*.tmp
+config.tmp
+
+# User-specific adapter configuration (contains upstream URLs and keys)
+adapters.json
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

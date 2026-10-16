@@ -1,0 +1,14 @@
+{
+  "example-provider": {
+    "enabled": false,
+    "upstreamBaseURL": "https://api.example.com/v1",
+    "originalBaseURL": "https://api.example.com/v1",
+    "headers": {},
+    "dynamicHeaders": {},
+    "bodyOverrides": { "stream": true },
+    "defaultModel": "",
+    "timeoutMs": 120000,
+    "apiKeySource": "incoming",
+    "storedApiKey": ""
+  }
+}

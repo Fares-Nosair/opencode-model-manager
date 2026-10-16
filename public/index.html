@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenCode Model Manager</title><link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand-mark">OC</div><div class="brand"><div class="eyebrow">LOCAL TOOL · OPENCode V2</div><h1>Model Manager</h1></div>
+    <div class="status-pill"><span class="status-dot"></span><span id="connectionText">Connecting…</span></div>
+  </header>
+  <main>
+    <section class="hero">
+      <div><div class="eyebrow">DISCOVER · REGISTER · CONTROL</div><h2>Your providers.<br><span>Your rules.</span></h2>
+      <p>Add OpenAI-compatible endpoints, discover their models, and register only the models you want in OpenCode. No model-discovery plugin required.</p></div>
+      <div class="hero-icon" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="core">✳</div><span class="spark spark-a"></span><span class="spark spark-b"></span><span class="spark spark-c"></span></div>
+    </section>
+    <section class="config-strip"><div class="strip-icon">⌘</div><div class="strip-copy"><strong>OpenCode config</strong><span id="configPath">Loading…</span></div><div class="mini-status mini-ok" id="modeStatus">Direct model registration</div><button class="button button-secondary plugin-remove hidden" id="removePluginBtn">Remove discovery plugin</button></section>
+    <nav class="tabs" role="tablist" aria-label="Views"><button id="tabModels" class="tab active" role="tab" aria-selected="true">Models</button><button id="tabProviders" class="tab" role="tab" aria-selected="false">Providers <span class="count-badge" id="providerCountTab">0</span></button><button id="tabAdapters" class="tab" role="tab" aria-selected="false">Adapters</button></nav>
+    <div id="modelsView">
+    <section class="workspace">
+      <aside class="sidebar panel">
+        <div class="panel-heading"><div><div class="eyebrow">WORKSPACE</div><h3>Providers</h3></div><span class="count-badge" id="providerCount">0</span></div>
+        <div id="providerList" class="provider-list"><div class="skeleton"></div><div class="skeleton"></div></div>
+        <button class="button add-provider" id="openAddProvider"><span>＋</span> Add custom provider</button>
+        <div class="sidebar-note"><span class="info-icon">i</span><span>Models are written directly into each provider's <code>models</code> object. No discovery plugin is needed.</span></div>
+      </aside>
+      <section class="models-panel panel">
+        <div class="panel-heading model-heading"><div><div class="eyebrow">MODEL INVENTORY</div><h3 id="selectedProviderTitle">Select a provider</h3></div><div class="discover-actions"><button class="button button-secondary" id="discoverAllBtn"><span class="button-symbol">⇄</span> Discover all providers</button><button class="button button-primary" id="discoverBtn" disabled><span class="button-symbol">↻</span> Discover provider</button></div></div>
+        <div class="endpoint-row"><span class="endpoint-label">ENDPOINT</span><code id="endpointText">—</code><span id="modelCount" class="model-count">0 models</span></div>
+        <div class="toolbar"><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search model IDs…" disabled></label><div class="selection-actions"><button class="text-button" id="selectAllBtn" disabled>Select all</button><span class="action-divider">/</span><button class="text-button" id="selectNoneBtn" disabled>Select none</button></div></div>
+        <div id="alert" class="alert hidden"></div>
+        <div id="emptyState" class="empty-state"><div class="empty-illustration">⌘</div><h4>Discover your models</h4><p>Discover one provider or fetch models from every configured provider at once.</p></div>
+        <div id="modelList" class="model-list hidden"></div>
+        <footer class="model-footer"><div class="footer-selection"><span class="selection-dot"></span><strong id="selectedCount">0 selected</strong><span id="visibleCount">· 0 shown</span></div><div class="save-state" id="saveState"><span class="save-dot"></span><span id="saveStateText">Auto-save on</span></div></footer>
+      </section>
+    </section>
+    </div>
+    <div id="providersView" class="hidden">
+      <section class="panel providers-panel">
+        <div class="panel-heading providers-heading"><div><div class="eyebrow">PROVIDER MANAGEMENT</div><h3>Providers</h3><p class="panel-sub">Toggle, test, edit, or delete. Key status is green when the <code>/v1/models</code> endpoint answers, grey otherwise. Disabled providers are written to <code>disabled_providers</code>.</p></div><div class="providers-actions"><button class="button button-secondary" id="checkAllBtn"><span class="button-symbol">✓</span> Check all keys</button><button class="button button-primary" id="openAddProvider2"><span>＋</span> Add provider</button></div></div>
+        <div id="providerAlert" class="alert hidden"></div>
+        <div id="providerCards" class="provider-cards"><div class="skeleton"></div><div class="skeleton"></div></div>
+        <div class="providers-foot"><span id="providerSummary">0 providers</span><span>·</span><span>Restart/reload OpenCode after changes to apply.</span></div>
+      </section>
+    </div>
+    <div id="adaptersView" class="hidden">
+      <section class="panel providers-panel">
+        <div class="panel-heading providers-heading"><div><div class="eyebrow">REQUEST ADAPTERS</div><h3>Adapters</h3><p class="panel-sub">Run a local OpenAI-compatible proxy per provider with dynamic headers, forced streaming and body overrides. OpenCode points at the local proxy URL.</p></div></div>
+        <div id="adapterAlert" class="alert hidden"></div>
+        <div class="toolbar adapter-toolbar">
+          <label class="search-box"><span>⌕</span><input id="adapterSearch" type="search" placeholder="Search providers by name or ID…" autocomplete="off"></label>
+          <span class="model-count" id="adapterSearchCount">0 providers</span>
+        </div>
+        <div id="adapterList" class="provider-list"><div class="skeleton"></div><div class="skeleton"></div></div>
+      </section>
+      <section class="panel adapter-form-panel hidden" id="adapterFormPanel">
+        <header class="adapter-head">
+          <div class="adapter-head-main">
+            <div class="eyebrow">ADAPTER SETTINGS</div>
+            <div class="adapter-head-row">
+              <h3 id="adapterFormTitle">Adapter</h3>
+              <div id="adapterStatusPills" class="adapter-pills"></div>
+            </div>
+            <p class="panel-sub" id="adapterRoutedLine"></p>
+          </div>
+          <button class="button button-secondary btn-sm" id="adapterPresetBtn">Apply Ahefi preset</button>
+        </header>
+        <div id="adapterProxyLine" class="proxy-card">
+          <span class="proxy-card-badge">PROXY</span>
+          <div class="proxy-card-body">
+            <span class="endpoint-label">LOCAL PROXY URL</span>
+            <code id="adapterProxyUrl">—</code>
+          </div>
+          <button class="button button-secondary btn-sm" id="adapterCopyBtn" type="button">Copy</button>
+        </div>
+        <form id="adapterForm">
+          <div class="adapter-grid">
+            <div class="form-card"><div class="form-card-head"><span class="form-card-num">01</span><div><strong>Routing</strong><small>Where requests go</small></div></div>
+            <div class="form-grid">
+              <label class="full adapter-enable-row"><span class="switch"><input type="checkbox" id="adEnabled"><span class="slider"></span></span><span class="adapter-enable-text"><strong>Enabled</strong><small>Point this provider at the local proxy. On save, the provider's base URL is rewritten (backed up). Turning off restores the original.</small></span></label>
+              <label class="full"><span>Upstream base URL <em>required</em></span><input id="adUpstream" placeholder="https://ahefi.com/v1" type="url"><small>The real API the proxy forwards to.</small></label>
+            </div></div>
+            <div class="form-card"><div class="form-card-head"><span class="form-card-num">02</span><div><strong>Headers</strong><small>Sent on every request</small></div></div>
+            <div class="form-grid">
+              <label class="full"><span>Static headers (JSON)</span><textarea id="adHeaders" rows="5" class="code" placeholder='{"X-Ahefi-Mode":"architect"}'></textarea></label>
+              <label class="full"><span>Dynamic headers (JSON)</span><textarea id="adDynHeaders" rows="2" class="code" placeholder='{"X-Ahefi-Task-ID":"{{uuid}}"}'></textarea><small>Tokens, resolved fresh on every request: {{uuid}} · {{node_version}} · {{timestamp}}</small></label>
+            </div></div>
+            <div class="form-card"><div class="form-card-head"><span class="form-card-num">03</span><div><strong>Body</strong><small>What the upstream receives</small></div></div>
+            <div class="form-grid">
+              <label class="full"><span>Body overrides (JSON)</span><textarea id="adBody" rows="4" class="code" placeholder='{"stream":true,"stream_options":{"include_usage":true}}'></textarea><small>Merged over the incoming body, so <code>stream:true</code> is forced even when the client sends <code>false</code>.</small></label>
+              <label><span>Default model</span><input id="adModel" placeholder="deepseek-v4.1-flash"><small>Used when the request sends no model.</small></label>
+              <label><span>Timeout (ms)</span><input id="adTimeout" type="number" min="1000" max="300000" step="1000"><small>1000–300000. No retries.</small></label>
+            </div></div>
+            <div class="form-card"><div class="form-card-head"><span class="form-card-num">04</span><div><strong>Authentication</strong><small>Which key goes upstream</small></div></div>
+            <div class="form-grid">
+              <label><span>API key source</span><select id="adKeySource"><option value="incoming">Incoming Bearer key</option><option value="env">Environment variable</option><option value="stored">Stored key</option></select><small>Empty or “dummy” keys are rejected with 401.</small></label>
+              <label id="adEnvNameRow" class="hidden"><span>Env var name</span><input id="adEnvName" placeholder="AHEFI_API_KEY"></label>
+              <label id="adStoredKeyRow" class="hidden"><span>Stored key</span><input id="adStoredKey" type="password" placeholder="Leave blank to keep" autocomplete="new-password"></label>
+              <label id="adClearKeyRow" class="hidden"><span class="check-row"><input type="checkbox" id="adClearKey"> <span>Remove stored key</span></span></label>
+            </div></div>
+          </div>
+          <div id="adapterFormError" class="alert alert-error hidden"></div>
+          <div class="adapter-save-bar">
+            <span class="save-hint">Saved to <code>adapters.json</code> · changes are applied immediately.</span>
+            <button type="submit" class="button button-primary" id="adapterSaveBtn">Save adapter</button>
+          </div>
+        </form>
+        <div class="diag-block">
+          <div class="diag-head">
+            <div><strong>Test connection</strong><small>POST /api/providers/test-chat — sends “hi” through the proxy pipeline</small></div>
+            <button class="button button-secondary btn-sm" id="adapterTestBtn">Send hi</button>
+          </div>
+          <pre id="adapterTestOut" class="diag-out">Not run yet. Click “Send hi”.</pre>
+        </div>
+      </section>
+
+    </div>
+    <section class="notice"><div class="notice-icon">!</div><div><strong>How this version works</strong><p>Discover models across all providers in one action. Checking a model registers it instantly; unchecking removes it — no save button. Models of disabled providers are shown greyed out and keep their previous selection. Restart/reload OpenCode to see changes.</p></div></section>
+    <div class="bottom-line"><span>LOCALHOST ONLY</span><span>NO DATABASE · NO GPU · NO PLUGIN REQUIRED</span></div>
+  </main>
+  <div id="toast" class="toast hidden" role="status"></div>
+</div>
+
+<div id="providerModal" class="modal-backdrop hidden">
+  <section class="modal panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head"><div><div class="eyebrow">PROVIDER SETUP</div><h3 id="modalTitle">Add custom provider</h3></div><button class="icon-button" id="closeModal" aria-label="Close">×</button></div>
+    <p class="modal-intro" id="modalIntro">Add an OpenAI-compatible API. You can discover models immediately after saving.</p>
+    <form id="providerForm">
+      <div class="form-grid">
+        <label><span>Provider ID <em>required</em></span><input name="id" id="providerIdInput" placeholder="codecraft" required pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}"><small>Used in model references, e.g. codecraft/model-id. Renaming is allowed: model references and any saved auth for the old ID change too.</small></label>
+        <label><span>Display name <em>required</em></span><input name="name" id="providerNameInput" placeholder="CodeCraft" required></label>
+        <label class="full"><span>Base URL</span><input name="baseURL" id="providerBaseURLInput" placeholder="https://api.example.com/v1" type="url"><small>Use the API's base URL, usually ending in /v1. Leave blank for providers that don't need one (e.g. Google).</small></label>
+        <div class="full endpoint-row served-via hidden" id="servedViaRow"><span class="endpoint-label">SERVED VIA</span><code id="servedViaUrl">—</code></div>
+        <label class="full"><span>API key <small>(optional)</small></span><input name="apiKey" id="providerApiKeyInput" type="password" placeholder="Paste provider key" autocomplete="new-password"><small id="apiKeyHelp">Stored in opencode.jsonc in plain text, like a normal provider config. Leave blank for unauthenticated APIs.</small></label>
+        <label class="full hidden" id="clearApiKeyRow"><span class="check-row"><input type="checkbox" name="clearApiKey" id="clearApiKeyInput"> <span>Remove saved API key</span></span><small>Check to delete the stored key when saving. If a new key is entered above, it replaces the old one.</small></label>
+        <label class="full"><span>Provider package</span><input name="package" id="providerPackageInput" value="@opencode-ai/ai/providers/openai-compatible" required><small>Default is for OpenAI-compatible APIs. Must be supported by your OpenCode version.</small></label>
+        <label class="full"><span>Extra headers <small>(optional JSON)</small></span><textarea name="headersText" id="providerHeadersInput" rows="3" placeholder='{"X-Client-ID":"my-client"}'></textarea><small>String-valued headers, if your gateway requires them. Empty clears existing headers when editing.</small></label>
+      </div>
+      <div id="formError" class="alert alert-error hidden"></div>
+      <div class="modal-actions"><button type="button" class="button button-danger hidden" id="deleteProviderBtn">Delete</button><span class="modal-spacer"></span><button type="button" class="button button-secondary" id="cancelAdd">Cancel</button><button type="submit" class="button button-primary" id="addProviderBtn">Add provider</button></div>
+    </form>
+  </section>
+</div>
+
+<script src="/app.js"></script>
+</body></html>
