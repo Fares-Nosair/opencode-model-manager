@@ -1,4 +1,5 @@
 # OpenCode Model Manager v4
+<img width="1296" height="731" alt="Screenshot 2026-10-16 210646" src="https://github.com/user-attachments/assets/913c2b39-91e6-46b5-b84d-5f0b066f4a98" />
 
 A local Windows dashboard for OpenCode v2-style configuration. Add custom OpenAI-compatible providers, query their model endpoints, and register selected model IDs directly in `providers.<id>.models` — no `opencode-models-discovery` plugin required.
 
@@ -61,6 +62,9 @@ Stop the server with `Ctrl+C`.
 3. Disabled providers show greyed-out models that keep their previous selection.
 
 ### Providers tab
+<img width="1247" height="632" alt="Screenshot 2026-10-16 211135" src="https://github.com/user-attachments/assets/a211caae-9af6-494f-8655-5b5de526613b" />
+
+
 - **Add provider** — enter ID, name, base URL, optional API key, provider package, and optional extra headers.
 - **Edit** — change any field; renaming the ID also renames the provider in config.
 - **Test** — checks the provider's model-list endpoint and reports latency and model count.
@@ -68,6 +72,8 @@ Stop the server with `Ctrl+C`.
 - **Toggle** — enable/disable providers (writes to `disabled_providers`).
 
 ### Adapters tab
+<img width="1104" height="713" alt="Screenshot 2026-10-16 210909" src="https://github.com/user-attachments/assets/d84d8eee-e4b6-4cfa-8e60-92b6d4721159" />
+
 The Adapters tab runs a local OpenAI-compatible proxy per provider:
 
 1. Select a provider and set its **upstream base URL** (the real API, not the proxy URL).
