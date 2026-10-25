@@ -98,7 +98,7 @@ describe("instant model save (one checkbox toggle)", () => {
     assert.deepEqual(Object.keys(readConfig().provider.t1.models), ["m1"]);
   });
 
-  it("leaves models outside the discovery result untouched", async () => {
+  it("removes models outside the discovery result by default (provider removed models)", async () => {
     writeConfig({
       provider: {
         t1: {
@@ -111,7 +111,7 @@ describe("instant model save (one checkbox toggle)", () => {
     });
     const r = await save("t1", ["m1", "m2"], []);
     assert.equal(r.status, 200);
-    assert.deepEqual(Object.keys(readConfig().provider.t1.models), ["elsewhere"]);
+    assert.deepEqual(Object.keys(readConfig().provider.t1.models), []);
   });
 
   it("rejects selections outside the discovery result", async () => {

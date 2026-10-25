@@ -2,13 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenCode Model Manager</title><link rel="stylesheet" href="/styles.css">
+  <title>OpenCode Model Manager</title>
+  <script>
+    (function() {
+      try {
+        var tab = (location.hash || "").replace(/^#/, "") || localStorage.getItem("opencode_active_tab") || "models";
+        var valid = ["models", "providers", "adapters", "activity", "mcp"];
+        if (valid.indexOf(tab) === -1) tab = "models";
+        document.documentElement.setAttribute("data-active-tab", tab);
+      } catch(e) {
+        document.documentElement.setAttribute("data-active-tab", "models");
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand-mark">OC</div><div class="brand"><div class="eyebrow">LOCAL TOOL · OPENCode V2</div><h1>Model Manager</h1></div>
     <div class="status-pill"><span class="status-dot"></span><span id="connectionText">Connecting…</span></div>
+    <div class="backup-dropdown-wrap">
+      <button class="button button-secondary btn-sm" id="backupsBtn">Backups</button>
+      <div id="backupsDropdown" class="backup-dropdown hidden">
+        <div class="backup-dropdown-head"><strong>Configuration Backups</strong></div>
+        <div id="backupsList" class="backups-list"><span class="backup-empty">Loading…</span></div>
+      </div>
+    </div>
   </header>
   <main>
     <section class="hero">
@@ -17,7 +37,7 @@
       <div class="hero-icon" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="core">✳</div><span class="spark spark-a"></span><span class="spark spark-b"></span><span class="spark spark-c"></span></div>
     </section>
     <section class="config-strip"><div class="strip-icon">⌘</div><div class="strip-copy"><strong>OpenCode config</strong><span id="configPath">Loading…</span></div><div class="mini-status mini-ok" id="modeStatus">Direct model registration</div><button class="button button-secondary plugin-remove hidden" id="removePluginBtn">Remove discovery plugin</button></section>
-    <nav class="tabs" role="tablist" aria-label="Views"><button id="tabModels" class="tab active" role="tab" aria-selected="true">Models</button><button id="tabProviders" class="tab" role="tab" aria-selected="false">Providers <span class="count-badge" id="providerCountTab">0</span></button><button id="tabAdapters" class="tab" role="tab" aria-selected="false">Adapters</button></nav>
+    <nav class="tabs" role="tablist" aria-label="Views"><button id="tabModels" class="tab" role="tab" aria-selected="false">Models</button><button id="tabProviders" class="tab" role="tab" aria-selected="false">Providers <span class="count-badge" id="providerCountTab">0</span></button><button id="tabAdapters" class="tab" role="tab" aria-selected="false">Adapters</button><button id="tabActivity" class="tab" role="tab" aria-selected="false">Activity</button><button id="tabMcp" class="tab" role="tab" aria-selected="false">🔌 MCP Servers <span class="count-badge" id="mcpCountTab">0</span></button></nav>
     <div id="modelsView">
     <section class="workspace">
       <aside class="sidebar panel">
@@ -27,9 +47,55 @@
         <div class="sidebar-note"><span class="info-icon">i</span><span>Models are written directly into each provider's <code>models</code> object. No discovery plugin is needed.</span></div>
       </aside>
       <section class="models-panel panel">
-        <div class="panel-heading model-heading"><div><div class="eyebrow">MODEL INVENTORY</div><h3 id="selectedProviderTitle">Select a provider</h3></div><div class="discover-actions"><button class="button button-secondary" id="discoverAllBtn"><span class="button-symbol">⇄</span> Discover all providers</button><button class="button button-primary" id="discoverBtn" disabled><span class="button-symbol">↻</span> Discover provider</button></div></div>
-        <div class="endpoint-row"><span class="endpoint-label">ENDPOINT</span><code id="endpointText">—</code><span id="modelCount" class="model-count">0 models</span></div>
-        <div class="toolbar"><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search model IDs…" disabled></label><div class="selection-actions"><button class="text-button" id="selectAllBtn" disabled>Select all</button><span class="action-divider">/</span><button class="text-button" id="selectNoneBtn" disabled>Select none</button></div></div>
+        <div class="panel-heading model-heading">
+          <div><div class="eyebrow">MODEL INVENTORY</div><h3 id="selectedProviderTitle">Select a provider</h3></div>
+          <div class="discover-actions">
+            <button class="button button-secondary" id="playgroundBtn"><span class="button-symbol">⚡</span> Playground</button>
+            <button class="button button-secondary" id="benchmarkBtn"><span class="button-symbol">🏁</span> Benchmark speed</button>
+            <button class="button button-secondary" id="discoverAllBtn"><span class="button-symbol">⇄</span> Discover all providers</button>
+            <button class="button button-primary" id="discoverBtn" disabled><span class="button-symbol">↻</span> Discover provider</button>
+          </div>
+        </div>
+        <div class="endpoint-row"><span class="endpoint-label">ENDPOINT</span><code id="endpointText">—</code><span id="cacheIndicator" class="cache-indicator hidden"></span><span id="modelCount" class="model-count">0 models</span></div>
+        <div class="toolbar">
+          <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search model IDs… (Press / to focus)" disabled></label>
+          <div class="filter-sort-controls">
+            <div class="view-mode-toggle" id="viewModeToggle">
+              <button type="button" class="view-btn active" id="viewFlatBtn" title="Flat List View">☰ Flat</button>
+              <button type="button" class="view-btn" id="viewGroupedBtn" title="Group by Model Family">⊞ By family</button>
+            </div>
+            <select id="modelFilterSelect" class="filter-select">
+              <option value="all">All</option>
+              <option value="configured">Configured only</option>
+              <option value="unconfigured">Unconfigured only</option>
+              <option value="reasoning">Reasoning only</option>
+              <option value="vision">Vision only</option>
+              <option value="tools">Tools only</option>
+              <option value="embed">Embeddings only</option>
+            </select>
+            <select id="modelSortSelect" class="filter-select">
+              <option value="az">A → Z</option>
+              <option value="za">Z → A</option>
+              <option value="provider">By provider</option>
+              <option value="configured">Configured first</option>
+            </select>
+          </div>
+          <div class="selection-actions">
+            <button class="text-button" id="selectAllBtn" disabled>Select all</button>
+            <span class="action-divider">/</span>
+            <button class="text-button" id="selectNoneBtn" disabled>Select none</button>
+            <span class="action-divider">/</span>
+            <button class="text-button" id="selectConfiguredBtn" disabled>Select configured</button>
+          </div>
+        </div>
+        <div class="filter-chips-bar" id="filterChipsBar">
+          <button type="button" class="filter-chip active" data-filter="all">All <span class="chip-count" id="chipCountAll">0</span></button>
+          <button type="button" class="filter-chip" data-filter="configured">Configured <span class="chip-count" id="chipCountConfigured">0</span></button>
+          <button type="button" class="filter-chip" data-filter="reasoning">Reasoning 🧠 <span class="chip-count" id="chipCountReasoning">0</span></button>
+          <button type="button" class="filter-chip" data-filter="vision">Vision 👁️ <span class="chip-count" id="chipCountVision">0</span></button>
+          <button type="button" class="filter-chip" data-filter="tools">Coding & Tools 🛠️ <span class="chip-count" id="chipCountTools">0</span></button>
+          <button type="button" class="filter-chip" data-filter="embed">Embeddings 🔤 <span class="chip-count" id="chipCountEmbed">0</span></button>
+        </div>
         <div id="alert" class="alert hidden"></div>
         <div id="emptyState" class="empty-state"><div class="empty-illustration">⌘</div><h4>Discover your models</h4><p>Discover one provider or fetch models from every configured provider at once.</p></div>
         <div id="modelList" class="model-list hidden"></div>
@@ -39,7 +105,7 @@
     </div>
     <div id="providersView" class="hidden">
       <section class="panel providers-panel">
-        <div class="panel-heading providers-heading"><div><div class="eyebrow">PROVIDER MANAGEMENT</div><h3>Providers</h3><p class="panel-sub">Toggle, test, edit, or delete. Key status is green when the <code>/v1/models</code> endpoint answers, grey otherwise. Disabled providers are written to <code>disabled_providers</code>.</p></div><div class="providers-actions"><button class="button button-secondary" id="checkAllBtn"><span class="button-symbol">✓</span> Check all keys</button><button class="button button-primary" id="openAddProvider2"><span>＋</span> Add provider</button></div></div>
+        <div class="panel-heading providers-heading"><div><div class="eyebrow">PROVIDER MANAGEMENT</div><h3>Providers</h3><p class="panel-sub">Toggle, test, edit, or delete. Key status is green when the <code>/v1/models</code> endpoint answers, grey otherwise. Disabled providers are written to <code>disabled_providers</code>.</p></div><div class="providers-actions"><button class="button button-secondary" id="exportBtn"><span class="button-symbol">↓</span> Export</button><button class="button button-secondary" id="importBtn"><span class="button-symbol">↑</span> Import</button><input type="file" id="importFileInput" accept=".json" class="hidden"><button class="button button-secondary" id="checkAllBtn"><span class="button-symbol">✓</span> Check all keys</button><button class="button button-primary" id="openAddProvider2"><span>＋</span> Add provider</button></div></div>
         <div id="providerAlert" class="alert hidden"></div>
         <div id="providerCards" class="provider-cards"><div class="skeleton"></div><div class="skeleton"></div></div>
         <div class="providers-foot"><span id="providerSummary">0 providers</span><span>·</span><span>Restart/reload OpenCode after changes to apply.</span></div>
@@ -65,7 +131,10 @@
             </div>
             <p class="panel-sub" id="adapterRoutedLine"></p>
           </div>
-          <button class="button button-secondary btn-sm" id="adapterPresetBtn">Apply Ahefi preset</button>
+          <div class="preset-dropdown-wrap">
+            <button class="button button-secondary btn-sm" id="adapterPresetBtn">Apply preset ▾</button>
+            <div id="presetDropdown" class="preset-dropdown hidden"></div>
+          </div>
         </header>
         <div id="adapterProxyLine" class="proxy-card">
           <span class="proxy-card-badge">PROXY</span>
@@ -117,6 +186,59 @@
       </section>
 
     </div>
+    <div id="activityView" class="hidden">
+      <section class="panel providers-panel">
+        <div class="panel-heading providers-heading"><div><div class="eyebrow">ACTIVITY LOG</div><h3>Activity</h3><p class="panel-sub">Live proxy request log — last 20 requests</p></div><div class="providers-actions"><button class="button button-secondary btn-sm" id="activityRefreshBtn"><span class="button-symbol">↻</span> Refresh</button><button class="button button-danger btn-sm" id="activityClearBtn">Clear</button></div></div>
+        <div id="activityAlert" class="alert hidden"></div>
+        <div class="activity-table-wrap">
+          <table class="activity-table" id="activityTable">
+            <thead><tr><th>Time</th><th>Provider</th><th>Model</th><th>Status</th><th>Latency</th><th>Error</th></tr></thead>
+            <tbody id="activityBody"><tr><td colspan="6" class="activity-empty">No requests logged yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    <div id="mcpView" class="hidden">
+      <section class="panel mcp-panel">
+        <div class="panel-heading mcp-heading">
+          <div>
+            <div class="eyebrow">AGENT EXTENSIONS &amp; TOOLS</div>
+            <h3>Model Context Protocol (MCP) Servers</h3>
+            <p class="panel-sub">Configure local tools and remote context servers directly in <code>opencode.jsonc</code>.</p>
+          </div>
+          <div class="mcp-actions">
+            <button class="button button-secondary btn-sm" id="mcpTestAllBtn"><span class="button-symbol">🩺</span> Test all</button>
+            <button class="button button-primary btn-sm" id="mcpAddBtn"><span class="button-symbol">＋</span> Add MCP server</button>
+          </div>
+        </div>
+        <div id="mcpAlert" class="alert hidden"></div>
+
+        <!-- 1-Click Popular Presets Shelf -->
+        <div class="mcp-presets-section">
+          <div class="mcp-presets-head">
+            <span class="eyebrow">POPULAR MCP EXTENSIONS</span>
+            <small class="mcp-presets-hint">1-click to configure essential tools in opencode.jsonc</small>
+          </div>
+          <div class="mcp-presets-grid" id="mcpPresetsGrid">
+            <div class="skeleton"></div>
+          </div>
+        </div>
+
+        <!-- Configured Servers List -->
+        <div class="mcp-servers-section">
+          <div class="mcp-servers-head">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="eyebrow">CONFIGURED SERVERS</span>
+              <span class="count-badge" id="mcpServerCountBadge">0</span>
+            </div>
+            <input type="search" id="mcpSearchInput" class="filter-input mcp-filter-input" placeholder="Filter MCP servers…">
+          </div>
+          <div id="mcpServersGrid" class="mcp-servers-grid">
+            <div class="skeleton"></div>
+          </div>
+        </div>
+      </section>
+    </div>
     <section class="notice"><div class="notice-icon">!</div><div><strong>How this version works</strong><p>Discover models across all providers in one action. Checking a model registers it instantly; unchecking removes it — no save button. Models of disabled providers are shown greyed out and keep their previous selection. Restart/reload OpenCode to see changes.</p></div></section>
     <div class="bottom-line"><span>LOCALHOST ONLY</span><span>NO DATABASE · NO GPU · NO PLUGIN REQUIRED</span></div>
   </main>
@@ -129,6 +251,12 @@
     <p class="modal-intro" id="modalIntro">Add an OpenAI-compatible API. You can discover models immediately after saving.</p>
     <form id="providerForm">
       <div class="form-grid">
+        <div class="modal-preset-row" id="modalPresetWrap">
+          <span>Use preset</span>
+          <select id="modalPresetSelect" class="filter-select">
+            <option value="">Select a provider preset to auto-fill…</option>
+          </select>
+        </div>
         <label><span>Provider ID <em>required</em></span><input name="id" id="providerIdInput" placeholder="codecraft" required pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}"><small>Used in model references, e.g. codecraft/model-id. Renaming is allowed: model references and any saved auth for the old ID change too.</small></label>
         <label><span>Display name <em>required</em></span><input name="name" id="providerNameInput" placeholder="CodeCraft" required></label>
         <label class="full"><span>Base URL</span><input name="baseURL" id="providerBaseURLInput" placeholder="https://api.example.com/v1" type="url"><small>Use the API's base URL, usually ending in /v1. Leave blank for providers that don't need one (e.g. Google).</small></label>
@@ -140,6 +268,234 @@
       </div>
       <div id="formError" class="alert alert-error hidden"></div>
       <div class="modal-actions"><button type="button" class="button button-danger hidden" id="deleteProviderBtn">Delete</button><span class="modal-spacer"></span><button type="button" class="button button-secondary" id="cancelAdd">Cancel</button><button type="submit" class="button button-primary" id="addProviderBtn">Add provider</button></div>
+    </form>
+  </section>
+</div>
+
+<div id="playgroundModal" class="modal-backdrop hidden">
+  <section class="modal panel playground-panel" role="dialog" aria-modal="true" aria-labelledby="pgModelTitle">
+    <div class="modal-head">
+      <div class="playground-brand">
+        <span class="playground-glyph" id="pgModelGlyph"></span>
+        <div style="flex:1;min-width:0;">
+          <div class="eyebrow" id="pgProviderName">PROVIDER</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <h3 id="pgModelTitle">Model ID</h3>
+            <select id="pgModelSelect" class="filter-select" style="max-width:260px;font-size:11px;" title="Switch model to test"></select>
+          </div>
+        </div>
+      </div>
+      <button class="icon-button" id="closePlayground" aria-label="Close">×</button>
+    </div>
+
+    <!-- Playground Model Search & Switcher -->
+    <div class="playground-search-section">
+      <div class="playground-search-bar">
+        <span class="pg-search-icon">🔍</span>
+        <input
+          type="text"
+          id="pgModelSearch"
+          class="pg-search-input"
+          placeholder="Search & switch models (e.g. claude, gpt-4o, deepseek-r1)..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button type="button" class="pg-search-clear hidden" id="pgModelSearchClear" aria-label="Clear search" title="Clear">×</button>
+        <span class="pg-search-count-badge" id="pgSearchCount">0 models</span>
+      </div>
+      <div id="pgSearchResults" class="pg-search-dropdown hidden" role="listbox"></div>
+    </div>
+
+    <div class="playground-tags" id="pgTags"></div>
+
+    <div class="playground-body">
+      <div class="playground-presets">
+        <span class="preset-label">Quick prompts:</span>
+        <button type="button" class="chip-preset" data-prompt="Say hello and describe your capabilities in 2 concise sentences.">👋 Hello</button>
+        <button type="button" class="chip-preset" data-prompt="Write a clean Python function for binary search with edge case handling and docstring.">🐍 Python snippet</button>
+        <button type="button" class="chip-preset" data-prompt="Solve this math problem step by step: What is 47 * 89?">🧮 Math step-by-step</button>
+        <button type="button" class="chip-preset" data-prompt="Explain optimistic vs pessimistic locking in 3 bullet points.">⚡ Quick explain</button>
+      </div>
+
+      <label class="playground-prompt-label">
+        <span>Prompt</span>
+        <textarea id="pgPrompt" rows="3" placeholder="Enter a prompt to test this model directly..."></textarea>
+      </label>
+
+      <div class="playground-actions">
+        <div class="playground-meta">
+          <span id="pgLatency" class="stat-pill hidden">0ms</span>
+          <span id="pgTokens" class="stat-pill hidden">0 chars</span>
+        </div>
+        <button type="button" class="button button-primary" id="pgSendBtn">
+          <span class="button-symbol">⚡</span> Send Request
+        </button>
+      </div>
+
+      <div id="pgThinkingWrap" class="playground-thinking hidden">
+        <details class="thinking-details" open>
+          <summary><span class="thinking-icon">🧠</span> Reasoning Trace <small id="pgThinkingLength"></small></summary>
+          <pre id="pgThinking" class="code-block thinking-content"></pre>
+        </details>
+      </div>
+
+      <div id="pgOutputWrap" class="playground-output-wrap hidden">
+        <div class="output-header">
+          <span>Response</span>
+          <button type="button" class="text-button" id="pgCopyOutputBtn">Copy</button>
+        </div>
+        <div id="pgOutput" class="playground-output"></div>
+      </div>
+
+      <div id="pgError" class="alert alert-error hidden"></div>
+    </div>
+  </section>
+</div>
+
+<div id="benchmarkModal" class="modal-backdrop hidden">
+  <section class="modal panel benchmark-panel" role="dialog" aria-modal="true" aria-labelledby="benchmarkTitle">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">LATENCY & RELIABILITY BENCHMARK</div>
+        <h3 id="benchmarkTitle">🏁 Model Speed Race</h3>
+      </div>
+      <button class="icon-button" id="closeBenchmark" aria-label="Close">×</button>
+    </div>
+    <p class="modal-intro">Select the specific models you want to test. Only selected models will be pinged with a 1-word micro-prompt (<code>max_tokens: 5</code>) to minimize credit usage.</p>
+
+    <!-- Model Selection Area -->
+    <div class="benchmark-select-section">
+      <div class="benchmark-select-head">
+        <div class="benchmark-select-title">
+          <strong>Models to race</strong>
+          <span id="benchmarkSelectCount" class="chip-count">0 selected</span>
+        </div>
+        <div class="benchmark-select-actions">
+          <input type="search" id="benchmarkSearchInput" class="filter-select" placeholder="Filter models to test…" autocomplete="off">
+          <button type="button" class="text-button" id="benchmarkSelectNoneBtn">Clear all</button>
+        </div>
+      </div>
+      <div id="benchmarkModelPicker" class="benchmark-model-picker">
+        <span class="benchmark-empty" style="grid-column:1/-1;padding:12px 0;">Loading models…</span>
+      </div>
+    </div>
+
+    <div class="benchmark-controls">
+      <button type="button" class="button button-primary" id="runBenchmarkBtn" disabled>
+        <span class="button-symbol">▶</span> Run Benchmark
+      </button>
+      <span id="benchmarkStatusText" class="benchmark-status">Select models above to test</span>
+    </div>
+
+    <div id="benchmarkResultsWrap" class="benchmark-results-wrap">
+      <table class="benchmark-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Model</th>
+            <th>Provider</th>
+            <th>Latency</th>
+            <th>Status</th>
+            <th>Response</th>
+          </tr>
+        </thead>
+        <tbody id="benchmarkBody">
+          <tr><td colspan="6" class="benchmark-empty">Select models above and click "Run Benchmark" to test latency.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div id="mcpModal" class="modal-backdrop hidden">
+  <section class="modal panel mcp-modal-panel" role="dialog" aria-modal="true" aria-labelledby="mcpModalTitle">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">MCP CONFIGURATION</div>
+        <h3 id="mcpModalTitle">Add MCP Server</h3>
+      </div>
+      <button class="icon-button" id="closeMcpModal" aria-label="Close">×</button>
+    </div>
+    <p class="modal-intro" id="mcpModalIntro">Register an MCP server directly into <code>opencode.jsonc</code> for agent tool access.</p>
+
+    <form id="mcpForm">
+      <div class="mcp-quick-paste-bar">
+        <span>Quick fill:</span>
+        <button type="button" class="chip-preset" id="mcpTogglePasteJsonBtn">📋 Paste JSON Snippet</button>
+      </div>
+      <div id="mcpPasteJsonWrap" class="mcp-paste-json-wrap hidden">
+        <textarea id="mcpPasteJsonInput" rows="3" placeholder='Paste JSON snippet (e.g. {"burp": {"type": "local", "command": ["java", "-jar", "..."], "enabled": true}})...'></textarea>
+        <button type="button" class="button button-secondary btn-sm" id="mcpApplyPasteJsonBtn">Apply JSON to Form</button>
+      </div>
+      <div class="form-grid">
+        <label>
+          <span>Server ID <em>required</em></span>
+          <input name="id" id="mcpIdInput" placeholder="filesystem" required pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}">
+          <small>Identifier used in <code>mcp.servers[id]</code> (e.g. filesystem, github, burp).</small>
+        </label>
+
+        <label>
+          <span>Server Type</span>
+          <select name="type" id="mcpTypeSelect" class="filter-select">
+            <option value="local">Local Command (stdio via npx, uvx, node)</option>
+            <option value="remote">Remote Endpoint (HTTP / SSE URL)</option>
+          </select>
+        </label>
+
+        <!-- Local Command Fields -->
+        <div class="full" id="mcpLocalGroup">
+          <label>
+            <span>Command &amp; Arguments <em>required</em></span>
+            <input name="command" id="mcpCommandInput" placeholder="npx -y @modelcontextprotocol/server-filesystem C:\workspace">
+            <small>Executable and arguments (e.g. <code>uvx mcp-server-git</code> or <code>npx -y @modelcontextprotocol/server-fetch</code>).</small>
+          </label>
+
+          <label style="margin-top:8px;">
+            <span>Working Directory (cwd) <small>(optional)</small></span>
+            <input name="cwd" id="mcpCwdInput" placeholder="C:\projects\my-repo">
+          </label>
+
+          <label style="margin-top:8px;">
+            <span>Environment Variables <small>(optional JSON)</small></span>
+            <textarea name="environment" id="mcpEnvInput" rows="2" placeholder='{"GITHUB_PERSONAL_ACCESS_TOKEN":"ghp_..."}'></textarea>
+            <small>JSON object of environment variables, or use <code>{env:VAR_NAME}</code> substitution.</small>
+          </label>
+        </div>
+
+        <!-- Remote URL Fields -->
+        <div class="full hidden" id="mcpRemoteGroup">
+          <label>
+            <span>Remote URL <em>required</em></span>
+            <input name="url" id="mcpUrlInput" type="url" placeholder="http://127.0.0.1:9876 or https://mcp.context7.com/mcp">
+            <small>Absolute HTTP/HTTPS endpoint providing the Model Context Protocol transport.</small>
+          </label>
+
+          <label style="margin-top:8px;">
+            <span>Custom Headers <small>(optional JSON)</small></span>
+            <textarea name="headers" id="mcpHeadersInput" rows="2" placeholder='{"Authorization":"Bearer ..."}'></textarea>
+            <small>JSON object of headers sent on connection requests.</small>
+          </label>
+        </div>
+
+        <label class="full">
+          <span class="check-row">
+            <input type="checkbox" id="mcpEnabledInput" checked>
+            <span>Enabled for OpenCode agents</span>
+          </span>
+          <small>When unchecked, the server is preserved in config with <code>enabled: false</code>.</small>
+        </label>
+      </div>
+
+      <div id="mcpFormTestResult" class="mcp-test-banner hidden"></div>
+      <div id="mcpFormError" class="alert alert-error hidden"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="button button-danger hidden" id="mcpDeleteBtn">Delete</button>
+        <button type="button" class="button button-secondary" id="mcpTestCurrentBtn"><span class="button-symbol">🩺</span> Test</button>
+        <span class="modal-spacer"></span>
+        <button type="button" class="button button-secondary" id="mcpCancelBtn">Cancel</button>
+        <button type="submit" class="button button-primary" id="mcpSaveBtn">Save Server</button>
+      </div>
     </form>
   </section>
 </div>
